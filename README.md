@@ -224,10 +224,14 @@ docker-compose logs -f
 
 ### Configuration
 
-1. Create a `.env` file based on `.env.example`:
+1. Create a `.env` file based on the example below:
 
 ```bash
-cp .env.example .env
+REDIS_HOST=redis
+REDIS_PORT=6379
+GEMINI_API_KEY=your_gemini_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ## Running Integration Tests
