@@ -114,16 +114,6 @@ make test
 - Check Redis: `docker-compose exec redis redis-cli keys '*job*'`
 - Check metrics: `curl http://localhost:8000/metrics`
 
-## CRITICAL SYSTEM NOTICE
-
-**THIS SYSTEM IS MISSION-CRITICAL AND DESIGNED FOR LIFE-SAVING OPERATIONS**
-
-This application processes documents containing vital information that may impact human safety. Proper functioning of all components is essential. Any failures in document processing, parsing accuracy, or system availability could have serious consequences.
-
-- All changes must undergo thorough testing
-- Continuous monitoring is required when deployed
-- Error handling and fallbacks must be maintained at all times
-
 ## Features
 
 - **Document Processing**: Upload and process PDFs with multiple parser options
