@@ -1,0 +1,227 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Document Processor API",
+    "description": "Collection for testing the PDF Document Processing API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Check if the API is healthy"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "status": "healthy"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload Document",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "files",
+              "type": "file",
+              "src": "/path/to/your/file.pdf"
+            },
+            {
+              "key": "parser",
+              "value": "pypdf",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/documents/upload",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "documents", "upload"]
+        },
+        "description": "Upload a PDF document for processing"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "/path/to/your/file.pdf"
+                },
+                {
+                  "key": "parser",
+                  "value": "pypdf",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents", "upload"]
+            }
+          },
+          "status": "Accepted",
+          "code": 202,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "job_id": "123e4567-e89b-12d3-a456-426614174000",
+            "message": "Files uploaded for processing"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Job Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/documents/{{job_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "documents", "{{job_id}}"]
+        },
+        "description": "Get the status of a document processing job"
+      },
+      "response": [
+        {
+          "name": "Success",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents", "{{job_id}}"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "job_id": "{{job_id}}",
+            "status": "done",
+            "markdown": "# Document Title\n\nThis is the extracted content...",
+            "summary": "This is a summary of the document..."
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Test for health check",
+          "if (pm.info.requestName === 'Health Check') {",
+          "    pm.test('Status code is 200', function () {",
+          "        pm.response.to.have.status(200);",
+          "    });",
+          "    pm.test('Response has correct format', function () {",
+          "        pm.response.to.be.json;",
+          "        pm.expect(pm.response.json()).to.have.property('status');",
+          "        pm.expect(pm.response.json().status).to.equal('healthy');",
+          "    });",
+          "}",
+          "",
+          "// Test for upload",
+          "if (pm.info.requestName === 'Upload Document') {",
+          "    pm.test('Status code is 202', function () {",
+          "        pm.response.to.have.status(202);",
+          "    });",
+          "    pm.test('Response has job_id', function () {",
+          "        pm.response.to.be.json;",
+          "        pm.expect(pm.response.json()).to.have.property('job_id');",
+          "        pm.expect(pm.response.json().job_id).to.be.a('string');",
+          "    });",
+          "}",
+          "",
+          "// Test for job status",
+          "if (pm.info.requestName === 'Get Job Status') {",
+          "    pm.test('Status code is 200', function () {",
+          "        pm.response.to.have.status(200);",
+          "    });",
+          "    pm.test('Response has correct format', function () {",
+          "        pm.response.to.be.json;",
+          "        pm.expect(pm.response.json()).to.have.property('job_id');",
+          "        pm.expect(pm.response.json()).to.have.property('status');",
+          "        pm.expect(pm.response.json()).to.have.property('markdown');",
+          "        pm.expect(pm.response.json()).to.have.property('summary');",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "job_id",
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "type": "string"
+    }
+  ]
+}

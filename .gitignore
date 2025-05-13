@@ -1,0 +1,137 @@
+# -----------------------
+# 1) Python artifacts
+# -----------------------
+# Byte‐compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# -----------------------
+# 2) IDE & Editor files
+# -----------------------
+# VSCode
+.vscode/
+
+# JetBrains (PyCharm, WebStorm, etc.)
+.idea/
+
+# Mac OS Finder
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# -----------------------
+# 3) Environment & Secrets
+# -----------------------
+# dotenv environment files
+.env.*
+
+# Any other secret or key files
+*.pem
+*.key
+*.crt
+
+# -----------------------
+# 4) Logs & Databases
+# -----------------------
+*.log
+logs/
+*.sqlite3
+
+# -----------------------
+# 5) Redis Streams / Uploads
+# -----------------------
+# Temporary upload folders
+uploads/
+# If you choose to store processed data locally:
+processed/
+
+# -----------------------
+# 6) Docker & Compose
+# -----------------------
+# Docker artifacts
+docker-compose.override.yml
+docker-compose.*.yml # ignore other local overrides
+*.log
+*.pid
+*.swp
+
+# -----------------------
+# 7) Testing
+# -----------------------
+# pytest cache
+.pytest_cache/
+.cache/
+.coverage
+htmlcov/
+coverage.xml
+nosetests.xml
+junit*.xml
+
+# -----------------------
+# 8) Postman & Misc
+# -----------------------
+# Ignore Postman environment files, but keep the collection JSON
+postman/*.postman_environment.json
+
+# -----------------------
+# 9) Optional: Node / Next.js (if you add a frontend)
+# -----------------------
+# Node modules
+node_modules/
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Yarn / npm logs
+yarn-debug.log*
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# -----------------------
+# 10) Misc OS/editor swap files
+# -----------------------
+*~
+*.swp
+*.swo
+
+# Project specific
+*.pdf
