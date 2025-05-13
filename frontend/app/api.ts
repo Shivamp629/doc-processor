@@ -17,7 +17,12 @@ const apiClient = axios.create({
 });
 
 // Upload documents
-export async function uploadDocuments(files: File[], parser: string): Promise<string> {
+export interface UploadJob {
+    job_id: string;
+    filename: string;
+}
+
+export async function uploadDocuments(files: File[], parser: string): Promise<UploadJob[]> {
     const formData = new FormData();
 
     files.forEach(file => {
@@ -27,11 +32,11 @@ export async function uploadDocuments(files: File[], parser: string): Promise<st
     formData.append('parser', parser);
 
     try {
-        const response = await apiClient.post<{ job_id: string }>(
+        const response = await apiClient.post<UploadJob[]>(
             '/api/v1/documents/upload',
             formData
         );
-        return response.data.job_id;
+        return response.data;
     } catch (error) {
         console.error('Error uploading documents:', error);
         throw new Error('Failed to upload documents. Please try again.');
@@ -53,16 +58,13 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
 export async function pollJobStatus(
     jobId: string,
     onStatusUpdate: (status: JobStatus) => void,
-    interval = 2000,
-    maxAttempts = 60 // 2 minutes max
+    initialInterval = 100,
+    slowInterval = 500,
+    fastPollDurationMs = 5000
 ): Promise<void> {
-    let attempts = 0;
+    let startTime = Date.now();
 
     const poll = async () => {
-        if (attempts >= maxAttempts) {
-            throw new Error('Polling timeout reached');
-        }
-
         try {
             const status = await getJobStatus(jobId);
             onStatusUpdate(status);
@@ -71,13 +73,14 @@ export async function pollJobStatus(
                 return;
             }
 
-            attempts++;
+            // Adaptive polling: fast for first 5s, then slow
+            const elapsed = Date.now() - startTime;
+            const interval = elapsed < fastPollDurationMs ? initialInterval : slowInterval;
             setTimeout(poll, interval);
         } catch (error) {
             console.error('Error polling job status:', error);
-            // Continue polling even on error
-            attempts++;
-            setTimeout(poll, interval);
+            // Retry quickly on error
+            setTimeout(poll, initialInterval);
         }
     };
 

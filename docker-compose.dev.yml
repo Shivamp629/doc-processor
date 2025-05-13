@@ -1,19 +1,25 @@
 version: '3.8'
 
 services:
-  # Backend API service
+  # Backend API service with hot reload
   api:
     build: 
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "8000:8000"
     volumes:
-      - ./uploads:/app/uploads
+      - ./backend:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
     env_file:
       - .env
     depends_on:
       - redis
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -22,21 +28,27 @@ services:
       retries: 3
       start_period: 15s
 
-  # Worker service for background processing
+  # Worker service with hot reload
   worker:
     build: 
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     command: python -m app.worker
     volumes:
-      - ./uploads:/app/uploads
+      - ./backend:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
     env_file:
       - .env
     depends_on:
       - redis
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
     restart: unless-stopped
 
-  # Redis service for caching and message queue
+  # Redis service
   redis:
     image: redis:7-alpine
     ports:
@@ -51,15 +63,20 @@ services:
       retries: 3
       start_period: 5s
 
-  # Frontend service
+  # Frontend service with hot reload
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=development
     depends_on:
       - api
     restart: unless-stopped

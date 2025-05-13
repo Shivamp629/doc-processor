@@ -19,6 +19,11 @@ class RedisService:
         self.redis_host = host
         self.redis_port = port
         self._connection = None
+        logger.info("Redis service initialized", extra={
+            "service": "redis",
+            "host": host,
+            "port": port
+        })
     
     @property
     def connection(self) -> redis.Redis:
@@ -32,9 +37,20 @@ class RedisService:
                 )
                 # Test connection
                 self._connection.ping()
-                logger.info(f"Connected to Redis at {self.redis_host}:{self.redis_port}")
+                logger.info("Redis connection established", extra={
+                    "service": "redis",
+                    "host": self.redis_host,
+                    "port": self.redis_port,
+                    "status": "connected"
+                })
             except redis.ConnectionError as e:
-                logger.error(f"Failed to connect to Redis: {str(e)}")
+                logger.error("Redis connection failed", extra={
+                    "service": "redis",
+                    "host": self.redis_host,
+                    "port": self.redis_port,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)
+                }, exc_info=True)
                 raise
         return self._connection
     
@@ -52,10 +68,22 @@ class RedisService:
         try:
             serialized_data = {k: json.dumps(v) for k, v in data.items()}
             entry_id = self.connection.xadd(stream_name, serialized_data)
-            logger.info(f"Added entry to stream {stream_name}: {data.get('job_id', 'unknown')}")
+            logger.info("Added entry to Redis stream", extra={
+                "service": "redis",
+                "operation": "add_to_stream",
+                "stream": stream_name,
+                "job_id": data.get("job_id", "unknown"),
+                "entry_id": entry_id.decode('utf-8') if isinstance(entry_id, bytes) else entry_id
+            })
             return entry_id
         except Exception as e:
-            logger.error(f"Failed to add to stream {stream_name}: {str(e)}")
+            logger.error("Failed to add entry to Redis stream", extra={
+                "service": "redis",
+                "operation": "add_to_stream",
+                "stream": stream_name,
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             raise
     
     def set_job_status(self, job_id: str, status: str, markdown: str = "", summary: str = "") -> None:
@@ -77,9 +105,22 @@ class RedisService:
                     "summary": summary
                 }
             )
-            logger.info(f"Updated job {job_id} status to {status}")
+            logger.info("Updated job status in Redis", extra={
+                "service": "redis",
+                "operation": "set_job_status",
+                "job_id": job_id,
+                "status": status,
+                "markdown_length": len(markdown),
+                "summary_length": len(summary)
+            })
         except Exception as e:
-            logger.error(f"Failed to update job status for {job_id}: {str(e)}")
+            logger.error("Failed to update job status in Redis", extra={
+                "service": "redis",
+                "operation": "set_job_status",
+                "job_id": job_id,
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             raise
     
     def get_job_status(self, job_id: str) -> Optional[Dict[str, str]]:
@@ -96,15 +137,84 @@ class RedisService:
             job_data = self.connection.hgetall(f"job:{job_id}")
             
             if not job_data:
-                logger.warning(f"Job {job_id} not found")
+                logger.warning("Job not found in Redis", extra={
+                    "service": "redis",
+                    "operation": "get_job_status",
+                    "job_id": job_id
+                })
                 return None
             
             # Convert bytes to strings
             result = {k.decode('utf-8'): v.decode('utf-8') for k, v in job_data.items()}
-            logger.debug(f"Retrieved job status for {job_id}: {result.get('status', 'unknown')}")
+            logger.debug("Retrieved job status from Redis", extra={
+                "service": "redis",
+                "operation": "get_job_status",
+                "job_id": job_id,
+                "status": result.get("status", "unknown")
+            })
             return result
         except Exception as e:
-            logger.error(f"Failed to get job status for {job_id}: {str(e)}")
+            logger.error("Failed to get job status from Redis", extra={
+                "service": "redis",
+                "operation": "get_job_status",
+                "job_id": job_id,
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
+            raise
+
+    def set_pdf(self, job_id: str, pdf_bytes: bytes) -> None:
+        """
+        Store PDF bytes in Redis under key pdf:{job_id}.
+        """
+        try:
+            self.connection.set(f"pdf:{job_id}", pdf_bytes)
+            logger.info("Stored PDF in Redis", extra={
+                "service": "redis",
+                "operation": "set_pdf",
+                "job_id": job_id,
+                "pdf_size": len(pdf_bytes)
+            })
+        except Exception as e:
+            logger.error("Failed to store PDF in Redis", extra={
+                "service": "redis",
+                "operation": "set_pdf",
+                "job_id": job_id,
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
+            raise
+
+    def get_pdf(self, job_id: str) -> bytes:
+        """
+        Retrieve PDF bytes from Redis by job_id.
+        """
+        try:
+            pdf_bytes = self.connection.get(f"pdf:{job_id}")
+            if pdf_bytes is None:
+                logger.error("PDF not found in Redis", extra={
+                    "service": "redis",
+                    "operation": "get_pdf",
+                    "job_id": job_id,
+                    "error": "not_found"
+                })
+                raise FileNotFoundError(f"PDF for job {job_id} not found in Redis")
+            
+            logger.debug("Retrieved PDF from Redis", extra={
+                "service": "redis",
+                "operation": "get_pdf",
+                "job_id": job_id,
+                "pdf_size": len(pdf_bytes)
+            })
+            return pdf_bytes
+        except Exception as e:
+            logger.error("Failed to retrieve PDF from Redis", extra={
+                "service": "redis",
+                "operation": "get_pdf",
+                "job_id": job_id,
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             raise
 
 

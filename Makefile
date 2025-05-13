@@ -1,4 +1,4 @@
-.PHONY: build run stop down logs clean test backend-dev frontend-dev
+.PHONY: build run stop down logs clean test backend-dev frontend-dev prod dev
 
 # Docker compose commands
 build:
@@ -26,6 +26,13 @@ worker-dev:
 frontend-dev:
 	cd frontend && npm run dev
 
+# Development with Docker (hot reload)
+dev:
+	docker-compose -f docker-compose.dev.yml up --build
+
+dev-down:
+	docker-compose -f docker-compose.dev.yml down
+
 # Clean up commands
 clean:
 	docker-compose down -v
@@ -49,6 +56,7 @@ setup-dev: install-backend install-frontend
 	@echo "Run 'make backend-dev' to start the backend API server"
 	@echo "Run 'make worker-dev' to start the worker process"
 	@echo "Run 'make frontend-dev' to start the frontend development server"
+	@echo "Or run 'make dev' to start all services with hot reload in Docker"
 
 # Setup .env file
 setup-env:
@@ -71,6 +79,11 @@ help:
 	@echo "  make backend-dev    - Run backend API in development mode"
 	@echo "  make worker-dev     - Run worker in development mode"
 	@echo "  make frontend-dev   - Run frontend in development mode"
+	@echo "  make dev            - Run all services with hot reload in Docker"
+	@echo "  make dev-down       - Stop and remove development containers"
 	@echo "  make test           - Run tests"
 	@echo "  make setup-dev      - Install all development dependencies"
-	@echo "  make setup-env      - Create .env file from example" 
+	@echo "  make setup-env      - Create .env file from example"
+
+prod:
+	docker-compose up -d --build 

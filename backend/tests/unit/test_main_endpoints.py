@@ -22,8 +22,9 @@ def test_upload_file_success(client, tmp_path, mock_redis_service):
     # Assert response
     assert response.status_code == 202
     data = response.json()
-    assert "job_id" in data
-    assert "message" in data
+    assert isinstance(data, list)
+    assert "job_id" in data[0]
+    assert "filename" in data[0]
 
 
 @pytest.mark.unit

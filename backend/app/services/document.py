@@ -3,6 +3,8 @@
 import os
 import PyPDF2
 import google.generativeai as genai
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 from pathlib import Path
 from typing import Dict, Any
 
@@ -27,54 +29,102 @@ class DocumentService:
         # Configure Gemini API if key is available
         if settings.GEMINI_API_KEY:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            logger.info("Gemini API configured")
+            logger.info("Gemini API configured", extra={
+                "service": "document",
+                "api": "gemini",
+                "status": "configured"
+            })
         else:
-            logger.warning("Gemini API key not configured")
+            logger.warning("Gemini API key not configured", extra={
+                "service": "document",
+                "api": "gemini",
+                "status": "not_configured"
+            })
+            
+        # Configure Mistral API if key is available
+        if settings.MISTRAL_API_KEY:
+            self.mistral_client = MistralClient(api_key=settings.MISTRAL_API_KEY)
+            logger.info("Mistral API configured", extra={
+                "service": "document",
+                "api": "mistral",
+                "status": "configured"
+            })
+        else:
+            self.mistral_client = None
+            logger.warning("Mistral API key not configured", extra={
+                "service": "document",
+                "api": "mistral",
+                "status": "not_configured"
+            })
     
-    def extract_with_pypdf(self, filepath: str) -> str:
+    def extract_with_pypdf(self, file_obj) -> str:
         """
         Extract text from PDF using PyPDF2.
         
         Args:
-            filepath: Path to the PDF file
+            file_obj: File-like object (BytesIO or file)
             
         Returns:
             Extracted text
         """
-        logger.info(f"Extracting text from {filepath} using PyPDF")
+        logger.info("Starting PDF extraction with PyPDF", extra={
+            "service": "document",
+            "parser": "pypdf",
+            "operation": "extract"
+        })
         try:
             text = ""
-            with open(filepath, "rb") as file:
-                reader = PyPDF2.PdfReader(file)
-                for page_num, page in enumerate(reader.pages):
-                    page_text = page.extract_text()
-                    text += f"--- Page {page_num + 1} ---\n\n{page_text}\n\n"
+            reader = PyPDF2.PdfReader(file_obj)
+            for page_num, page in enumerate(reader.pages):
+                page_text = page.extract_text()
+                text += f"--- Page {page_num + 1} ---\n\n{page_text}\n\n"
             
-            logger.info(f"Successfully extracted {len(reader.pages)} pages from {filepath}")
+            logger.info("PDF extraction completed", extra={
+                "service": "document",
+                "parser": "pypdf",
+                "operation": "extract",
+                "pages": len(reader.pages),
+                "text_length": len(text)
+            })
             return text
         except Exception as e:
-            logger.error(f"Failed to extract text from {filepath}: {str(e)}")
+            logger.error("PDF extraction failed", extra={
+                "service": "document",
+                "parser": "pypdf",
+                "operation": "extract",
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             raise
     
-    def extract_with_gemini(self, filepath: str) -> str:
+    def extract_with_gemini(self, file_obj) -> str:
         """
         Extract and convert PDF to markdown using Google Gemini.
         
         Args:
-            filepath: Path to the PDF file
+            file_obj: File-like object (BytesIO or file)
             
         Returns:
             Markdown-formatted content
         """
-        logger.info(f"Extracting text from {filepath} using Gemini")
+        logger.info("Starting PDF extraction with Gemini", extra={
+            "service": "document",
+            "parser": "gemini",
+            "operation": "extract"
+        })
         
         if not settings.GEMINI_API_KEY:
-            logger.error("Gemini API key not configured")
+            logger.error("Gemini API key not configured", extra={
+                "service": "document",
+                "parser": "gemini",
+                "operation": "extract",
+                "error": "api_key_missing"
+            })
             raise ValueError("Gemini API key not configured")
         
         try:
             # First extract text with PyPDF2
-            raw_text = self.extract_with_pypdf(filepath)
+            raw_text = self.extract_with_pypdf(file_obj)
             
             # Use Gemini to convert to markdown
             model = genai.GenerativeModel(model_name="gemini-2.0-flash")
@@ -87,25 +137,91 @@ class DocumentService:
             """
             
             response = model.generate_content(prompt)
-            logger.info(f"Successfully converted {filepath} to markdown using Gemini")
+            logger.info("PDF extraction completed with Gemini", extra={
+                "service": "document",
+                "parser": "gemini",
+                "operation": "extract",
+                "raw_text_length": len(raw_text),
+                "markdown_length": len(response.text)
+            })
             return response.text
         except Exception as e:
-            logger.error(f"Failed to extract text with Gemini from {filepath}: {str(e)}")
+            logger.error("PDF extraction failed with Gemini", extra={
+                "service": "document",
+                "parser": "gemini",
+                "operation": "extract",
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             raise
     
-    def extract_with_mistral(self, filepath: str) -> str:
+    def extract_with_mistral(self, file_obj) -> str:
         """
-        Stub function for Mistral integration.
-        For now, just returns PyPDF2 extracted text.
+        Extract text from PDF using Mistral OCR API.
+        If MISTRAL_API_KEY is set, uses real OCR API.
+        Otherwise, returns a stubbed string for testing.
         
         Args:
-            filepath: Path to the PDF file
-            
+            file_obj: File-like object (BytesIO or file)
         Returns:
-            Extracted text
+            Extracted text (real OCR output or stubbed)
         """
-        logger.info(f"Extracting text from {filepath} using Mistral (stubbed)")
-        return self.extract_with_pypdf(filepath)
+        logger.info("Starting PDF extraction with Mistral", extra={
+            "service": "document",
+            "parser": "mistral",
+            "operation": "extract"
+        })
+        
+        if not settings.MISTRAL_API_KEY:
+            logger.warning("Mistral API key not set, using stubbed output", extra={
+                "service": "document",
+                "parser": "mistral",
+                "operation": "extract",
+                "mode": "stubbed"
+            })
+            return "[Stubbed Mistral OCR output for testing]"
+        
+        try:
+            # First extract text with PyPDF2 as fallback
+            raw_text = self.extract_with_pypdf(file_obj)
+            
+            # Use Mistral to enhance the text with OCR capabilities
+            messages = [
+                ChatMessage(role="system", content="You are an OCR enhancement service. Improve the text extraction by fixing any OCR errors and formatting issues."),
+                ChatMessage(role="user", content=f"Please enhance this extracted text, fixing any OCR errors and improving formatting:\n\n{raw_text}")
+            ]
+            
+            chat_response = self.mistral_client.chat(
+                model="mistral-tiny",  # Using tiny model for OCR enhancement
+                messages=messages
+            )
+            
+            enhanced_text = chat_response.choices[0].message.content
+            logger.info("PDF extraction completed with Mistral", extra={
+                "service": "document",
+                "parser": "mistral",
+                "operation": "extract",
+                "raw_text_length": len(raw_text),
+                "enhanced_text_length": len(enhanced_text)
+            })
+            return enhanced_text
+            
+        except Exception as e:
+            logger.error("PDF extraction failed with Mistral", extra={
+                "service": "document",
+                "parser": "mistral",
+                "operation": "extract",
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
+            # Fallback to PyPDF2 extraction if Mistral fails
+            logger.info("Falling back to PyPDF2 extraction", extra={
+                "service": "document",
+                "parser": "mistral",
+                "operation": "fallback",
+                "fallback_parser": "pypdf"
+            })
+            return self.extract_with_pypdf(file_obj)
     
     def summarize_with_gemini(self, content: str) -> str:
         """
@@ -117,10 +233,18 @@ class DocumentService:
         Returns:
             Summary text
         """
-        logger.info("Generating summary with Gemini")
+        logger.info("Starting content summarization", extra={
+            "service": "document",
+            "operation": "summarize",
+            "content_length": len(content)
+        })
         
         if not settings.GEMINI_API_KEY:
-            logger.error("Gemini API key not configured")
+            logger.error("Gemini API key not configured", extra={
+                "service": "document",
+                "operation": "summarize",
+                "error": "api_key_missing"
+            })
             raise ValueError("Gemini API key not configured")
         
         try:
@@ -134,10 +258,20 @@ class DocumentService:
             """
             
             response = model.generate_content(prompt)
-            logger.info("Successfully generated summary")
+            logger.info("Content summarization completed", extra={
+                "service": "document",
+                "operation": "summarize",
+                "input_length": len(content),
+                "summary_length": len(response.text)
+            })
             return response.text
         except Exception as e:
-            logger.error(f"Failed to generate summary: {str(e)}")
+            logger.error("Content summarization failed", extra={
+                "service": "document",
+                "operation": "summarize",
+                "error_type": type(e).__name__,
+                "error_message": str(e)
+            }, exc_info=True)
             raise
     
     def get_parser_function(self, parser_type: ParserType):
@@ -158,9 +292,19 @@ class DocumentService:
         
         parser_func = parser_map.get(parser_type)
         if not parser_func:
-            logger.error(f"Unknown parser type: {parser_type}")
+            logger.error("Unknown parser type", extra={
+                "service": "document",
+                "operation": "get_parser",
+                "parser_type": str(parser_type),
+                "error": "unknown_parser"
+            })
             raise ValueError(f"Unknown parser type: {parser_type}")
         
+        logger.debug("Parser function retrieved", extra={
+            "service": "document",
+            "operation": "get_parser",
+            "parser_type": str(parser_type)
+        })
         return parser_func
 
 

@@ -7,6 +7,18 @@ from app.services.document import DocumentService, document_service
 from app.schemas import ParserType
 
 
+@pytest.fixture
+def mock_mistral():
+    """Mock Mistral API client."""
+    with patch('app.services.document.MistralClient') as mock:
+        mock_instance = MagicMock()
+        mock.return_value = mock_instance
+        mock_instance.chat.return_value.choices = [
+            MagicMock(message=MagicMock(content="Enhanced OCR text from Mistral"))
+        ]
+        yield mock_instance
+
+
 @pytest.mark.unit
 def test_extract_with_pypdf(sample_pdf_path):
     """Test PyPDF extraction."""
@@ -33,14 +45,49 @@ def test_extract_with_gemini(sample_pdf_path, mock_gemini):
 
 
 @pytest.mark.unit
-def test_extract_with_mistral(sample_pdf_path):
-    """Test Mistral extraction (which currently uses PyPDF)."""
-    # Call the function
-    result = document_service.extract_with_mistral(sample_pdf_path)
+def test_extract_with_mistral_no_api_key(sample_pdf_path):
+    """Test Mistral extraction without API key (stubbed)."""
+    # Temporarily remove API key
+    original_key = document_service.mistral_client
+    document_service.mistral_client = None
     
-    # This should match PyPDF extraction since Mistral is stubbed
+    try:
+        result = document_service.extract_with_mistral(sample_pdf_path)
+        assert "Stubbed Mistral OCR output" in result
+    finally:
+        # Restore API key
+        document_service.mistral_client = original_key
+
+
+@pytest.mark.unit
+def test_extract_with_mistral_with_api_key(sample_pdf_path, mock_mistral, monkeypatch):
+    """Test Mistral extraction with API key (mocked)."""
+    # Patch settings to simulate API key
+    monkeypatch.setattr("app.services.document.settings.MISTRAL_API_KEY", "dummy-key")
+    # Set up mock client
+    document_service.mistral_client = mock_mistral
+    
+    result = document_service.extract_with_mistral(sample_pdf_path)
+    assert "Enhanced OCR text from Mistral" in result
+    
+    # Verify Mistral API was called
+    mock_mistral.chat.assert_called_once()
+
+
+@pytest.mark.unit
+def test_extract_with_mistral_api_error(sample_pdf_path, mock_mistral, monkeypatch):
+    """Test Mistral extraction with API error (fallback to PyPDF)."""
+    # Patch settings to simulate API key
+    monkeypatch.setattr("app.services.document.settings.MISTRAL_API_KEY", "dummy-key")
+    # Set up mock to raise exception
+    mock_mistral.chat.side_effect = Exception("API Error")
+    
+    # Set up mock client
+    document_service.mistral_client = mock_mistral
+    
+    result = document_service.extract_with_mistral(sample_pdf_path)
+    # Should fall back to PyPDF2 extraction
     assert "PDF Document Processor - Test Document" in result
-    assert "Page 2 - Additional Information" in result
 
 
 @pytest.mark.unit

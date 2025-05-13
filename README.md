@@ -1,6 +1,106 @@
-# PDF Document Processing Service
+# PDF Document Processor
 
-A production-ready application for processing PDF documents, extracting their content as markdown, and generating summaries.
+## Production Checklist
+- [x] Async backend with FastAPI, Redis Streams, and worker
+- [x] PDF storage in Redis (not local disk)
+- [x] Structured JSON logging
+- [x] Prometheus metrics at /metrics
+- [x] Grafana dashboard for metrics visualization
+- [x] Multi-file upload and per-file job tracking
+- [x] Frontend with sidebar/history, error and empty states
+- [x] One-line run: `make prod`
+- [x] One-line test: `make test`
+- [x] Hot reload development environment: `make dev`
+
+## Quick Start
+```bash
+# Production
+make prod
+# Visit http://localhost:3000 (frontend)
+# Visit http://localhost:8000/docs (API docs)
+# Visit http://localhost:8000/metrics (Prometheus metrics)
+# Visit http://localhost:3001 (Grafana dashboard with username/password - admin/admin)
+
+# Development with Hot Reload
+make dev
+# Same URLs as above, but with hot reloading enabled
+```
+
+## Development Environment
+
+### Local Development (without Docker)
+```bash
+# Setup development environment
+make setup-dev
+
+# Run backend API with hot reload
+make backend-dev
+
+# Run worker process
+make worker-dev
+
+# Run frontend with hot reload
+make frontend-dev
+```
+
+### Docker Development (with Hot Reload)
+```bash
+# Start all services with hot reload
+make dev
+
+# Stop development services
+make dev-down
+```
+
+The development environment includes:
+- Hot reloading for both backend and frontend
+- Source code mounted as volumes
+- Development-specific configurations
+- Automatic restart on code changes
+
+## Architecture
+- **FastAPI** backend with async endpoints
+- **Redis Streams** for job queue
+- **Worker** for async processing
+- **PDFs stored in Redis** as binary blobs
+- **Prometheus metrics** for observability
+- **Next.js frontend** with sidebar/history
+
+## Metrics and Monitoring
+
+The application includes comprehensive metrics and monitoring:
+
+### Prometheus Metrics
+- Exposed at `/metrics` (Prometheus format)
+- Tracks: request count, job count, job errors, durations
+- Available at http://localhost:9090 (Prometheus UI)
+
+### Grafana Dashboard
+- Available at http://localhost:3001
+- Default credentials: admin/admin
+- Pre-configured with:
+  - Request rate and latency
+  - Job processing metrics
+  - Error rates
+  - System health indicators
+
+### Key Metrics Tracked
+- API request latency and count
+- Job processing status and duration
+- Error rates and types
+- Redis connection health
+- Worker queue length
+- PDF processing success/failure rates
+
+## Testing
+```bash
+make test
+```
+
+## Troubleshooting
+- Check logs: `docker-compose logs api worker frontend`
+- Check Redis: `docker-compose exec redis redis-cli keys '*job*'`
+- Check metrics: `curl http://localhost:8000/metrics`
 
 ## CRITICAL SYSTEM NOTICE
 
@@ -82,15 +182,6 @@ docker-compose exec redis redis-cli ping
 docker-compose logs -f
 ```
 
-## Architecture
-
-The application follows a modern microservices architecture:
-
-- **Backend**: FastAPI-based REST API with asyncio for concurrent processing
-- **Worker**: Background processor for handling document extraction and summarization
-- **Frontend**: Next.js application with TypeScript and React
-- **Database**: Redis for caching and message queue
-
 ## Project Structure
 
 ```
@@ -109,15 +200,18 @@ The application follows a modern microservices architecture:
 │   │   ├── fixtures/          # Test fixtures
 │   │   └── data/              # Test data and generators
 │   ├── Dockerfile             # Backend service Dockerfile
+│   ├── Dockerfile.dev         # Development Dockerfile with hot reload
 │   └── requirements.txt       # Python dependencies
 ├── frontend/                  # Next.js frontend
 │   ├── app/                   # Next.js application
 │   ├── components/            # React components
-│   ├── lib/                   # Utility functions
-│   └── Dockerfile             # Frontend Dockerfile
+│   ├── Dockerfile             # Frontend Dockerfile
+│   ├── Dockerfile.dev         # Development Dockerfile with hot reload
+│   └── package.json          # Node.js dependencies
 ├── postman/                   # Postman collection for API testing
 ├── docker-compose.yml         # Docker Compose configuration
-├── .env.example               # Example environment variables
+├── docker-compose.dev.yml     # Development Docker Compose with hot reload
+├── Makefile                  # Build and run commands
 └── README.md                  # Project documentation
 ```
 
@@ -136,105 +230,22 @@ The application follows a modern microservices architecture:
 cp .env.example .env
 ```
 
-2. Add your API keys to the `.env` file:
+## Running Integration Tests
 
-```
-GEMINI_API_KEY=your_gemini_api_key_here
-```
+Some integration tests require the backend API server to be running (e.g., multi-file upload, end-to-end tests).
 
-### Building and Running
+To run these tests:
 
-Deploy with Docker Compose:
+1. Start the backend server in one terminal:
+   ```bash
+   make backend-dev
+   # or
+   uvicorn app.main:app --reload
+   ```
+2. In another terminal, run the tests:
+   ```bash
+   cd backend
+   python -m pytest
+   ```
 
-```bash
-docker-compose up -d --build
-```
-
-This will start:
-- Backend API on http://localhost:8000
-- Frontend on http://localhost:3000
-- Redis database
-- Background worker
-
-## API Documentation
-
-When running, the API documentation is available at:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-### Key Endpoints
-
-#### Upload Document
-```http
-POST /api/v1/documents/upload
-```
-
-Request:
-- `files`: One or more PDF files (form-data)
-- `parser`: Parser type to use (pypdf, gemini, mistral)
-
-Response:
-```json
-{
-  "job_id": "unique-job-id",
-  "message": "Files uploaded for processing"
-}
-```
-
-#### Get Processing Status
-```http
-GET /api/v1/documents/{job_id}
-```
-
-Response:
-```json
-{
-  "job_id": "unique-job-id",
-  "status": "pending|processing|done|error",
-  "markdown": "Processed markdown content",
-  "summary": "Generated summary"
-}
-```
-
-## Developer Guide
-
-### Backend Development
-
-1. Create a Python virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
-```bash
-cd backend
-pip install -r requirements.txt
-```
-
-3. Run the API:
-```bash
-uvicorn app.main:app --reload
-```
-
-4. Run the worker:
-```bash
-python -m app.worker
-```
-
-### Frontend Development
-
-1. Install dependencies:
-```bash
-cd frontend
-npm install
-```
-
-2. Run the development server:
-```bash
-npm run dev
-```
-
-## License
-
-MIT 
+If the backend is not running, these tests will be automatically skipped.

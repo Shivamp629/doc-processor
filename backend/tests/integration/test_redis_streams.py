@@ -4,10 +4,20 @@ import asyncio
 import pytest
 import threading
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from app.worker import worker_loop
 from app.services.document import document_service
 from app.schemas import ParserType
+
+
+@pytest.fixture
+def redis_service():
+    # Minimal stub for redis_service
+    mock = MagicMock()
+    mock.add_to_stream = MagicMock()
+    mock.get_job_status = MagicMock(return_value={"status": "done", "markdown": "Test", "summary": "Test"})
+    return mock
 
 
 @pytest.mark.integration
