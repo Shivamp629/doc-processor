@@ -12,6 +12,18 @@
 - [x] One-line test: `make test`
 - [x] Hot reload development environment: `make dev`
 
+### Configuration
+
+1. Create a `.env` file based on the example below:
+
+```bash
+REDIS_HOST=redis
+REDIS_PORT=6379
+GEMINI_API_KEY=your_gemini_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
 ## Quick Start
 ```bash
 # Production
@@ -221,17 +233,6 @@ docker-compose logs -f
 
 - Docker and Docker Compose
 - Google Gemini API key (for advanced parsing and summarization)
-
-### Configuration
-
-1. Create a `.env` file based on the example below:
-
-```bash
-REDIS_HOST=redis
-REDIS_PORT=6379
-GEMINI_API_KEY=your_gemini_api_key_here
-MISTRAL_API_KEY=your_mistral_api_key_here
-NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ## Running Integration Tests
